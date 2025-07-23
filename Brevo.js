@@ -6,12 +6,9 @@ require("dotenv").config();
 
 const app = express();
 app.use(express.json());
-const PORT = 3000;
-
+const PORT = process.env.PORT || 3000;
 // ---------- CONFIG ----------
-const MONGO_URI =
-  "mongodb+srv://Damandeep:MongoDB@cluster0.9j661l9.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
-const POSTHOG_API_KEY = process.env.POSTHOG_API_KEY;
+const MONGO_URI = process.env.MONGO_URI;
 const BASE_URL =
   "https://us.posthog.com/api/projects/128173/session_recordings/";
 const LIMIT = 1000;
@@ -133,10 +130,13 @@ async function sendEmailsInBatches(emails, templateName) {
 
 // ---------- MAIN SYNC ----------
 app.get("/sync", async (req, res) => {
+    const apiKey = req.headers["x-posthog-api-key"];
+    if (!apiKey) return res.status(401).send("PostHog API key missing");
+
   try {
     console.time("🔄 Sync Duration");
 
-    const recordings = await fetchSessionRecordings(POSTHOG_API_KEY);
+    const recordings = await fetchSessionRecordings(apiKey);
     console.log(`📦 Total PostHog recordings fetched: ${recordings.length}`);
 
     // Group sessions
@@ -259,9 +259,11 @@ app.get("/sync", async (req, res) => {
 
 
 app.get("/dryrun", async (req, res) => {
+    const apiKey = req.headers["x-posthog-api-key"];
+    if (!apiKey) return res.status(401).send("PostHog API key missing");
   try {
     console.time("🧪 Dry-Run Duration");
-    const recordings = await fetchSessionRecordings(POSTHOG_API_KEY);
+    const recordings = await fetchSessionRecordings(apiKey);
     console.log(`📦 Total PostHog recordings fetched: ${recordings.length}`);
 
     // Group sessions
