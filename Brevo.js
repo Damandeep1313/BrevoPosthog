@@ -119,7 +119,7 @@ async function sendEmailsInBatches(emails, templateName) {
           i / BATCH_SIZE + 1
         } (${batch.length} emails)`
       );
-      await axios.post("https://api.brevo.com/v3/smtp/email", payload, {
+      await axios.post("https://api.brevo.com/v3/smtp/email", sendSmtpEmail, {
   headers: {
     "api-key": process.env.BREVO_API_KEY,
     "content-type": "application/json",
