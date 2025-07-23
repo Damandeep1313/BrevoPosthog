@@ -1,1 +1,110 @@
 UnderstandThisAgent
+
+
+## ✅ **Full Logic (Step by Step)**
+
+### **1) Fetch Fresh Data from PostHog**
+
+- We use PostHog API to get all **session recordings**.
+- Each recording contains an email + session end_time.
+- We group them as:
+
+  ```js
+  sessionMap: {
+    "user1@gmail.com": [Date1, Date2, ...],
+    "user2@gmail.com": [Date3, Date4, ...]
+  }
+  ```
+
+---
+
+### **2) Update Database (Fresh Data Always Wins)**
+
+- **If a user doesn’t exist → Insert new record.**
+- **If user exists → Merge old + new session history** (remove duplicates, update count, and latest `end_time`).
+- Bulk operations used:
+
+  - `insertMany()` → for new users.
+  - `bulkWrite()` → for updates.
+
+✅ After this step, **DB has the latest & complete session history for all users.**
+
+---
+
+### **3) Classification (Deciding User Category)**
+
+For each user, we calculate:
+
+- **Dormant**
+  `if (lastSession <= now - 14 days)`
+
+- **Resurrecting**
+
+  - Last 7 days (P0) have sessions (`P0.length > 0`)
+  - But previous 7 days (P1) had **no sessions** (`P1.length === 0`)
+  - And account age ≥ 14 days
+
+- **Returning**
+
+  - P0 has sessions
+  - P1 also has sessions (`P0.length > 0 && P1.length > 0`)
+
+Otherwise → `null`.
+
+✅ **Cool-down:**
+We send a template only if:
+
+```js
+if (user.last_template_sent !== category OR last_sent_at > 14 days)
+```
+
+---
+
+### **4) Update Template Info in DB**
+
+- If a user is classified and needs email:
+
+  - Update `last_template_sent` = `"Dormant"`/`"Resurrecting"`/`"Returning"`
+  - Update `last_template_sent_at` = now
+
+(`bulkWrite` for efficiency)
+
+---
+
+### **5) Send Emails in Batches**
+
+- Brevo has rate & credit limits, so:
+
+  - **500 emails per batch** (configurable `BATCH_SIZE`).
+  - Wait `2 seconds` between batches.
+
+- For each batch:
+
+  ```js
+  {
+    sender: { name: "On-Demand", email: "info@on-demand.io" },
+    to: [{ email: "user1@gmail.com" }, { email: "user2@gmail.com" }],
+    templateId: templateIdMap[category],
+    params: { name, subject }
+  }
+  ```
+
+✅ We log:
+
+```
+📧 Sending Dormant Batch 1 (500 emails)
+```
+
+and handle errors gracefully.
+
+---
+
+## **Why This Works Perfectly**
+
+✔️ DB is always fully updated before classification.
+✔️ Classification is based only on **fresh DB data**, not PostHog directly.
+✔️ Bulk operations = Fast even for 1M+ users.
+✔️ Cool-down logic prevents spam.
+✔️ Unsubscribed users skipped automatically.
+
+---
