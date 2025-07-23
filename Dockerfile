@@ -17,4 +17,4 @@ COPY . .
 EXPOSE 3000
 
 # Start the server
-CMD ["node", "smtp.js"]
+CMD ["node", "Brevo.js"]
