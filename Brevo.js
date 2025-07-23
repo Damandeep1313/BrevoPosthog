@@ -119,7 +119,14 @@ async function sendEmailsInBatches(emails, templateName) {
           i / BATCH_SIZE + 1
         } (${batch.length} emails)`
       );
-      await brevoClient.sendTransacEmail(sendSmtpEmail);
+      await axios.post("https://api.brevo.com/v3/smtp/email", payload, {
+  headers: {
+    "api-key": process.env.BREVO_API_KEY,
+    "content-type": "application/json",
+    accept: "application/json",
+  },
+});
+
     } catch (err) {
       console.error(`❌ Error sending ${templateName} batch:`, err.message);
     }
