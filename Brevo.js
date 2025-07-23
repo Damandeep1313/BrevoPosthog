@@ -18,7 +18,7 @@ const BATCH_SIZE = 100;
 const brevoClient = new Brevo.TransactionalEmailsApi();
 brevoClient.setApiKey(
   Brevo.TransactionalEmailsApiApiKeys.apiKey,
-  process.env.BREVO_API_KEY
+  process.env.BREVO_API_KEY.trim()
 );
 
 const templateIdMap = {
@@ -121,7 +121,7 @@ async function sendEmailsInBatches(emails, templateName) {
       );
       await axios.post("https://api.brevo.com/v3/smtp/email", sendSmtpEmail, {
   headers: {
-    "api-key": process.env.BREVO_API_KEY,
+    "api-key": process.env.BREVO_API_KEY.trim(),
     "content-type": "application/json",
     accept: "application/json",
   },
