@@ -106,34 +106,29 @@ async function fetchSessionRecordings(apiKey) {
 async function sendEmailsInBatches(emails, templateName) {
   for (let i = 0; i < emails.length; i += BATCH_SIZE) {
     const batch = emails.slice(i, i + BATCH_SIZE);
-    const sendSmtpEmail = {
-      sender: { name: "On-Demand", email: "info@on-demand.io" },
-      to: batch.map((email) => ({ email })),
-      templateId: templateIdMap[templateName],
-      params: { subject: `Your ${templateName} email` },
-    };
+
+    const sendSmtpEmail = new Brevo.SendSmtpEmail();
+    sendSmtpEmail.sender = { name: "On-Demand", email: "info@on-demand.io" };
+    sendSmtpEmail.to = batch.map((email) => ({ email }));
+    sendSmtpEmail.templateId = templateIdMap[templateName];
+    sendSmtpEmail.params = { subject: `Your ${templateName} email` };
 
     try {
       console.log(
-        `📧 Sending ${templateName} Batch ${
-          i / BATCH_SIZE + 1
-        } (${batch.length} emails)`
+        `📧 Sending ${templateName} Batch ${i / BATCH_SIZE + 1} (${batch.length} emails)`
       );
-      await axios.post("https://api.brevo.com/v3/smtp/email", sendSmtpEmail, {
-  headers: {
-    "api-key": process.env.BREVO_API_KEY.trim(),
-    "content-type": "application/json",
-    accept: "application/json",
-  },
-});
-
+      await brevoClient.sendTransacEmail(sendSmtpEmail);
     } catch (err) {
-      console.error(`❌ Error sending ${templateName} batch:`, err.message);
+      console.error(
+        `❌ Error sending ${templateName} batch:`,
+        err.response?.body || err.message
+      );
     }
 
     await new Promise((r) => setTimeout(r, 2000)); // 2s delay
   }
 }
+
 
 // ---------- MAIN SYNC ----------
 app.get("/sync", async (req, res) => {
